@@ -1,0 +1,6 @@
+name: 'Run unit tests'
+author: 'Hayden Roche'
+description: 'Run unit tests inside a Docker container based on an image from GitHub Container Registry.'
+runs:
+  using: 'docker'
+  image: ghcr.io://blues/note_c_ci:latest

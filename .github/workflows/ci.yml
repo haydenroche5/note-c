@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  check_ci_dockerfile_changed:
+  check_dockerfile_changed:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.filter.outputs.changed }}
@@ -16,36 +16,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Check if ci.Dockerfile changed
+      # TODO: This is a 3rd party GitHub action from some dude. Ideally, we'd
+      #       use something more "official".
+      - name: Check if Dockerfile changed
         uses: dorny/paths-filter@v2
         id: filter
         with:
           base: 'master'
           filters: |
             changed:
-              - '.github/workflows/ci.Dockerfile'
+              - '.github/workflows/Dockerfile'
 
   run_unit_tests:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    needs: check_ci_dockerfile_changed
+    needs: check_dockerfile_changed
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Rebuild base image if ci.Dockerfile changed
-        if: ${{ needs.check_ci_dockerfile_changed.outputs.changed == 'true' }}
-        run: |
-          docker build . --file .github/workflows/ci.Dockerfile --tag note_c_ci:temp
-          echo "BASE_IMAGE=note_c_ci:temp" >> $GITHUB_ENV
-
-      - name: Use registry base image if ci.Dockerfile did not change
-        if: ${{ needs.check_ci_dockerfile_changed.outputs.changed != 'true' }}
-        run: |
-          echo "BASE_IMAGE=ghcr.io/blues/note_c_ci:latest" >> $GITHUB_ENV
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -54,8 +45,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run unit tests
-        uses: ./.github/actions/run_unit_tests
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Rebuild image if Dockerfile changed
+        if: ${{ needs.check_dockerfile_changed.outputs.changed == 'true' }}
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          load: true
+          tags: ghcr.io/blues/note_c_ci:latest
+
+      - name: Run tests
+        run: |
+          docker run --rm --volume $(pwd):/note-c/ --workdir /note-c/ ghcr.io/blues/note_c_ci:latest
 
       - name: Adjust lcov source file paths for Coveralls
         run: sudo sed -i 's/\/note-c\///g' ./build/test/coverage/lcov.info
@@ -81,10 +84,10 @@ jobs:
 
   publish_ci_image:
     runs-on: ubuntu-latest
-    needs: check_ci_dockerfile_changed
+    needs: check_dockerfile_changed
 
-    # Only publish the image if this is a push event and ci.Dockerfile changed.
-    if: ${{ github.event_name == 'push' && needs.check_ci_dockerfile_changed.outputs.changed == 'true' }}
+    # Only publish the image if this is a push event and Dockerfile changed.
+    if: ${{ github.event_name == 'push' && needs.check_dockerfile_changed.outputs.changed == 'true' }}
 
     steps:
       - name: Login to GitHub Container Registry
@@ -98,5 +101,5 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          file: ./.github/workflows/ci.Dockerfile
+          file: ./.github/workflows/Dockerfile
           tags: ghcr.io/blues/note_c_ci:latest

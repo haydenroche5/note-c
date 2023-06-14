@@ -1,0 +1,6 @@
+name: 'Run unit tests'
+author: 'Hayden Roche'
+description: 'Run unit tests inside a locally built Docker container.'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
