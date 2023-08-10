@@ -47,7 +47,8 @@ NOTE_C_STATIC void delayIO(void)
              I2C read request can be issued.
 */
 /**************************************************************************/
-NOTE_C_STATIC const char * i2cNoteQueryLength(uint32_t * available, size_t timeoutMs)
+NOTE_C_STATIC const char * i2cNoteQueryLength(uint32_t * available,
+    size_t timeoutMs)
 {
     uint8_t dummy_buffer = 0;
 
@@ -114,6 +115,8 @@ const char *i2cNoteTransaction(char *request, char **response)
     // alloc so we can be assured that it can be null-terminated. This must be
     // the case because json parsing requires a null-terminated string.
     uint32_t available = 0;
+    // TODO: Do we assume that i2cNoteQueryLength will always return an error if
+    // available is 0?
     err = i2cNoteQueryLength(&available, (NOTECARD_TRANSACTION_TIMEOUT_SEC * 1000));
     if (err) {
 #ifdef ERRDBG
