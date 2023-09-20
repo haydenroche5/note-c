@@ -2,7 +2,7 @@
 
 COVERAGE=0
 MEM_CHECK=0
-
+# fake2
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --coverage) COVERAGE=1 ;;
